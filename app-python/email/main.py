@@ -1,5 +1,4 @@
-import boto3
-import os
+import boto3, os, json
 
 SOURCE = os.environ.get("email_source")
 
@@ -26,24 +25,30 @@ def handler(event, context):
         SUBJECT = "Hemos recibido tu correo"
         BODY = html_body.format(name=user.get('name').title(), url=event.get('api_gw') )
     
-        response = client.send_email(
-            Source=SOURCE,
-            Destination={
-                'ToAddresses': [user.get("email")],
-            },
-            Message={
-                'Subject': {
-                    'Data': SUBJECT,
-                    'Charset': charset
+        try:
+            response = client.send_email(
+                Source=SOURCE,
+                Destination={
+                    'ToAddresses': [user.get("email")],
                 },
-                'Body': {
-                    'Html': {
-                        'Data': BODY,
+                Message={
+                    'Subject': {
+                        'Data': SUBJECT,
                         'Charset': charset
+                    },
+                    'Body': {
+                        'Html': {
+                            'Data': BODY,
+                            'Charset': charset
+                        }
                     }
                 }
-            }
-        )
+            )
+            return response
 
-        return response
+        except Exception as e:
+           return {
+            'statusCode': 500,
+            'body': json.dumps(f'Failed to insert data: {e.response["Error"]["Message"]}')
+        }
 
