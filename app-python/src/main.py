@@ -1,36 +1,27 @@
+#Built-in modules
+import os, boto3, json, base64, time
+
+#Thirds party modules
 from datetime import date
-from flask import Flask, request, jsonify, render_template, redirect, url_for, flash
+from flask import Flask, request, jsonify, render_template, redirect, url_for
 from flask_bootstrap import Bootstrap5
-from flask_ckeditor import CKEditor
-from flask_gravatar import Gravatar
-from functools import wraps
-from werkzeug.security import generate_password_hash, check_password_hash
-# Import your forms from the forms.py
 
-import os, boto3, random, json, base64, time
 
+# Get env variables for aws resources
+API_GW = os.environ.get("API_GW")
+S3_ARN = os.environ.get("CDN_ARN")
+BACKEND_FUNCTION_NAME = os.environ.get("BACKEND_FUNCTION_NAME")
+EMAIL_FUNCTION_NAME = os.environ.get("EMAIL_FUNCTION_NAME")
+
+#Setup flask app
 app = Flask(__name__)
 app.config['SECRET_KEY'] = '8BYkEfBA6O6donzWlSihBXox7C0sKR6b'
 
-app.config['SERVER_NAME'] = os.environ.get("API_GW")
+app.config['SERVER_NAME'] = API_GW
 app.config['APPLICATION_ROOT'] = '/'
 app.config['PREFERRED_URL_SCHEME'] = 'https'
 
-
-S3_ARN = os.environ.get("CDN_ARN")
-FUNCTION_NAME = os.environ.get("FUNCTION_NAME")
-
 Bootstrap5(app)
-
-# For adding profile images to the comment section
-gravatar = Gravatar(app,
-                    size=100,
-                    rating='g',
-                    default='retro',
-                    force_default=False,
-                    force_lower=False,
-                    use_ssl=False,
-                    base_url=None)
 
 @app.route('/')
 def get_all_posts():
@@ -43,7 +34,7 @@ def get_all_posts():
             }
     
     response = get_lambda_client.invoke(
-        FunctionName=FUNCTION_NAME,
+        FunctionName=BACKEND_FUNCTION_NAME,
         InvocationType='RequestResponse',
         Payload=json.dumps(payload)
     )
@@ -59,6 +50,7 @@ def get_all_posts():
     
     return render_template("index.html", all_posts=posts, current_user=0,  S3_ARN = S3_ARN)
 
+# Route to get an specific post
 @app.route("/post/<int:post_id>", methods=["GET", "POST"])
 def show_post(post_id):
     get_lambda_client = boto3.client('lambda')
@@ -71,7 +63,7 @@ def show_post(post_id):
             }
     
     response = get_lambda_client.invoke(
-        FunctionName=FUNCTION_NAME,
+        FunctionName=BACKEND_FUNCTION_NAME,
         InvocationType='RequestResponse',
         Payload=json.dumps(payload)
     )
@@ -79,7 +71,7 @@ def show_post(post_id):
     post = json.loads(post.get("body"))
     return render_template("post.html", post=post, current_user=0)
 
-# Add a POST method to be able to post comments
+# Route to add a post
 @app.route("/newpost", methods=["GET", "POST"])
 def add_post():
     if request.method == "GET":
@@ -115,7 +107,7 @@ def add_post():
             }
     
             response = post_lambda_client.invoke(
-                FunctionName=FUNCTION_NAME,
+                FunctionName=BACKEND_FUNCTION_NAME,
                 InvocationType='RequestResponse',
                 Payload=json.dumps(payload)
             )
@@ -126,8 +118,7 @@ def add_post():
         except Exception as e:
             return jsonify({'error': str(e)})
     
-        
-# Use a decorator so only an admin user can delete a post
+# Route to delete a post
 @app.route("/delete/<int:post_id>")
 def delete_post(post_id):
     delete_lambda_client = boto3.client('lambda')
@@ -140,13 +131,14 @@ def delete_post(post_id):
             }
     
     response = delete_lambda_client.invoke(
-        FunctionName=FUNCTION_NAME,
+        FunctionName=BACKEND_FUNCTION_NAME,
         InvocationType='RequestResponse',
         Payload=json.dumps(payload)
     )
    
     return redirect(url_for('get_all_posts'))
     
+# Route to edit a post
 @app.route("/edit-post/<int:post_id>", methods=["GET", "POST"])
 def edit_post(post_id):
     get_lambda_client = boto3.client('lambda')
@@ -158,7 +150,7 @@ def edit_post(post_id):
         }
 
     response = get_lambda_client.invoke(
-        FunctionName=FUNCTION_NAME,
+        FunctionName=BACKEND_FUNCTION_NAME,
         InvocationType='RequestResponse',
         Payload=json.dumps(payload)
     )
@@ -174,41 +166,58 @@ def edit_post(post_id):
         image_url = request.form.get('image_url')
         content = request.form.get('content')
     
-        payload = {
+        payload = payload = {
                 "action": "update",
                 "item": {
                     "id": f"{post_id}"
                 },
-                "update_expression": "SET title = :title, subtitle = :subtitle, image_url = :image_url, content = :content",
+                "update_expression": "SET title = :title, subtitle = :subtitle, image_url = :url, content = :content",
                 "expression_values": {
                     ":title": title,
                     ":subtitle": subtitle,
-                    "image_url": image_url,
+                    ":url": f"{image_url}",
                     ":content": content
                 }
-            
             }
 
         response = get_lambda_client.invoke(
-        FunctionName=FUNCTION_NAME,
+        FunctionName=BACKEND_FUNCTION_NAME,
         InvocationType='RequestResponse',
         Payload=json.dumps(payload)
     )
      
     return redirect(url_for("show_post", post_id=post_id))
 
-
-
+# Route to get about information
 @app.route("/about")
 def about():
     return render_template("about.html", current_user=0,  S3_ARN = S3_ARN)
 
-
+# Route to get an email
 @app.route("/contact", methods=["GET","POST"])
 def contact():
-    return render_template("contact.html", current_user=0,  S3_ARN = S3_ARN)
+    if request.method == "POST":
+        get_lambda_client = boto3.client('lambda')
+        payload= { 
+            "api_gw": API_GW,
+            "user": {
+                "email": request.form.get("email"),
+                "name": request.form.get("name")
+                }
+            }
+        
+        response = get_lambda_client.invoke(
+            FunctionName=EMAIL_FUNCTION_NAME,
+            InvocationType='RequestResponse',
+            Payload=json.dumps(payload)
+        )
+           
+        return render_template("contact.html", msg_sent=True)
+    return render_template("contact.html", msg_sent=False)
 
 
+
+#Handler for lambda function
 def handler(event, context):
     # Convert API Gateway event to Flask request
     path = event.get('rawPath')
@@ -231,7 +240,3 @@ def handler(event, context):
             'headers': dict(response.headers),
             'body': response.get_data(as_text=True)
         }
-
-
-if __name__ == "__main__":
-    app.run(debug=True, port=5001)

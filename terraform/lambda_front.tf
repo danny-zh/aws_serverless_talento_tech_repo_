@@ -26,7 +26,7 @@ resource "aws_iam_policy" "lambda_invoke_policy" {
         {
             "Effect": "Allow",
             "Action": "lambda:InvokeFunction",
-            "Resource": aws_lambda_function.insertarDatoslambda.arn
+            "Resource": [aws_lambda_function.insertarDatoslambda.arn, aws_lambda_function.lambda_email_ses.arn]
         }
     ]
 })
@@ -105,7 +105,8 @@ resource "aws_lambda_function" "lambda" {
       S3_ARN = "https://${aws_s3_bucket.static_content.id}.s3.amazonaws.com"
       CDN_ARN = "https://${aws_cloudfront_distribution.cdn.domain_name}"
       API_GW= split("://",aws_apigatewayv2_api.api_gateway.api_endpoint)[1]
-      FUNCTION_NAME = aws_lambda_function.insertarDatoslambda.function_name
+      BACKEND_FUNCTION_NAME = aws_lambda_function.insertarDatoslambda.function_name
+      EMAIL_FUNCTION_NAME = aws_lambda_function.lambda_email_ses.function_name
     }
   }
 

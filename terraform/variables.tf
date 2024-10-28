@@ -33,3 +33,10 @@ variable "aws_resource_tags" {
     owner       = "dz@dzcol.com"
   }
 }
+
+variable "email_source" {
+  type        = string
+  description = "Source for email sending"
+  sensitive = true
+}
+
