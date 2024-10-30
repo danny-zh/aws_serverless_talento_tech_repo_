@@ -15,7 +15,9 @@ resource "aws_iam_policy" "lambda_email_ses_policy" {
             "Effect": "Allow",
             "Action": [
                 "ses:SendEmail",
-                "ses:SendRawEmail"
+                "ses:SendRawEmail",
+                "ses:ListIdentities",
+                "ses:VerifyEmailIdentity"
             ],
             "Resource": "*"
         }

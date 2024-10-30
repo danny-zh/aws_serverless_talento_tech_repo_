@@ -24,31 +24,40 @@ def handler(event, context):
         
         SUBJECT = "Hemos recibido tu correo"
         BODY = html_body.format(name=user.get('name').title(), url=event.get('api_gw') )
-    
+
+        user_email = user.get("email")
+
         try:
-            response = client.send_email(
-                Source=SOURCE,
-                Destination={
-                    'ToAddresses': [user.get("email")],
-                },
-                Message={
-                    'Subject': {
-                        'Data': SUBJECT,
-                        'Charset': charset
+            response = "test"
+            print(f"LIST:{client.list_identities().get("Identities")}")
+            if user_email not in client.list_identities().get("Identities"):
+                response = client.verify_email_identity(EmailAddress=user_email)
+               
+            else: 
+                response = client.send_email(
+                    Source=SOURCE,
+                    Destination={
+                        'ToAddresses': [user.get("email")],
                     },
-                    'Body': {
-                        'Html': {
-                            'Data': BODY,
+                    Message={
+                        'Subject': {
+                            'Data': SUBJECT,
                             'Charset': charset
+                        },
+                        'Body': {
+                            'Html': {
+                                'Data': BODY,
+                                'Charset': charset
+                            }
                         }
                     }
-                }
-            )
+                )
+            print(f"RESPONSE:{response}")
             return response
 
         except Exception as e:
            return {
             'statusCode': 500,
-            'body': json.dumps(f'Failed to insert data: {e.response["Error"]["Message"]}')
+            'body': json.dumps(f'Failed to insert data: {e}')
         }
 

@@ -37,5 +37,5 @@ resource "aws_s3_object" "static_files" {
   key    = "static/${each.value}"                     # S3 key, the file path in S3
   source = "${local.static_folder_root_path}/${each.value}"  # The local file to upload
   content_type = contains(split(".", each.value),"css") ? "text/css" : "application/octet-stream"
-
+  acl    = "public-read"
 }

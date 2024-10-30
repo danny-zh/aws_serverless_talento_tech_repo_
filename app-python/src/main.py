@@ -69,13 +69,13 @@ def show_post(post_id):
     )
     post =  json.loads(response['Payload'].read().decode('utf-8'))
     post = json.loads(post.get("body"))
-    return render_template("post.html", post=post, current_user=0)
+    return render_template("post.html", post=post, current_user=0,  S3_ARN = S3_ARN)
 
 # Route to add a post
 @app.route("/newpost", methods=["GET", "POST"])
 def add_post():
     if request.method == "GET":
-        return render_template("make-post.html")
+        return render_template("make-post.html",  S3_ARN = S3_ARN)
     elif request.method == "POST":
         # Retrieve form data from the POST request
         try:
@@ -158,7 +158,7 @@ def edit_post(post_id):
     post = json.loads(post.get("body"))
     
     if request.method == "GET":
-        return render_template("make-post.html", post=post, is_edit=True, current_user=0)
+        return render_template("make-post.html", post=post, is_edit=True, current_user=0, S3_ARN = S3_ARN)
     elif request.method == "POST":
 
         title = request.form.get('title')
@@ -212,8 +212,8 @@ def contact():
             Payload=json.dumps(payload)
         )
            
-        return render_template("contact.html", msg_sent=True)
-    return render_template("contact.html", msg_sent=False)
+        return render_template("contact.html", msg_sent=True, S3_ARN = S3_ARN)
+    return render_template("contact.html", msg_sent=False, S3_ARN = S3_ARN)
 
 
 
