@@ -37,6 +37,7 @@ variable "aws_resource_tags" {
 variable "email_source" {
   type        = string
   description = "Source for email sending"
+  default = "user@example.com"
   sensitive = true
 }
 
